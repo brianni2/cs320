@@ -1,0 +1,7 @@
+4,10; 
+6,10; 
+x,y; x,y; x,y; x,y; x,y; x,y; x,y; <- Single bit Bimodal predictors
+x,y; x,y; x,y; x,y; x,y; x,y; x,y; <- Two bit saturating Bimodal Predictors
+x,y; x,y; x,y; x,y; x,y; x,y; x,y; x,y; x,y; <- Gshare
+x,y; <- Tournament
+x,y; <- BTB correct predictions, BTB attempted predictions
