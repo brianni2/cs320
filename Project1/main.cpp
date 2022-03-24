@@ -56,7 +56,7 @@ void bimodal1(int* result, vector<Address>* input) {
     int count = 0;
     for(int i = 4; i < 12; i++) {
         if(i == 6) {        //skip 64 (2^6)
-            cout << "\nTable 64 - Skipped\n";
+            //cout << "\nTable 64 - Skipped\n";
             continue;
         }
         else {
@@ -64,33 +64,91 @@ void bimodal1(int* result, vector<Address>* input) {
             int tableSize = pow(2, i);
             vector<int> table;
             table.resize(tableSize, 1);
-            cout << "Table " << tableSize << "\tResult[" << count << "]\n";
+            //cout << "Table " << tableSize << "\tResult[" << count << "]\n";
 
             //Loop through inputs//
             for(int j = 0; j < input->size(); j++) {
                 string substr(input->at(j).binAddr, 0, i);
                 int dec = toInt(substr);
-                cout << input->at(j).addr << ": " << substr << "\t|" << dec << "\t|TV:" << table[dec] << "\t|B:" << input->at(j).behavior;
+                //cout << input->at(j).addr << ": " << substr << "\t|" << dec << "\t|TV:" << table[dec] << "\t|B:" << input->at(j).behavior;
                 if(input->at(j).behavior == table[dec]) {
-                    cout << "\ttable[" << dec << "] is 0 (NT)\n";
+                    //cout << "\tPrediction correct\n";
                     result[count]++;
                     continue;
                 }
                 else {
-                    cout << "\tUpdating table[" << dec << "] to " << input->at(j).behavior << endl;
+                    //cout << "\tUpdating table[" << dec << "] to " << input->at(j).behavior << endl;
                     table[dec] = input->at(j).behavior;
                 }
             }
-            cout << "result[" << count << "] = " << result[count] << endl << endl;
+            //cout << "result[" << count << "] = " << result[count] << endl << endl;
             count++;
         }
     }
 }
 
-void bimodal2(int* result, unsigned long long addr, string behavior) {
+void bimodal2(int* result, vector<Address> *input) {
+    int count = 0;
+    for(int i = 4; i < 12; i++) {
+        if(i == 6) {        //skip 64 (2^6)
+            //cout << "\nTable 64 - Skipped\n";
+            continue;
+        }
+        else {
+            //create history table//
+            int tableSize = pow(2, i);
+            vector<int> table;
+            table.resize(tableSize, 3);
+            //cout << "Table " << tableSize << "\tResult[" << count << "]\n";
+
+            //Loop through inputs//
+            for(int j = 0; j < input->size(); j++) {
+                string substr(input->at(j).binAddr, 0, i);
+                int dec = toInt(substr);
+                //cout << input->at(j).addr << ": " << substr << "\t|" << dec << "\t|TV:" << table[dec] << "\t|B:" << input->at(j).behavior << endl;
+                if(input->at(j).behavior == 0) {        //Not Taken
+                    switch(table[dec]) {
+                        case 0:
+                            result[count]++;
+                            break;
+                        case 1:
+                            result[count]++;
+                            table[dec]--;
+                            break;
+                        case 2:
+                            table[dec]--;
+                            break;
+                        case 3:
+                            table[dec]--;
+                            break;
+                    }
+                    continue;
+                }
+                else {      //Taken
+                    switch(table[dec]) {
+                        case 3:
+                            result[count]++;
+                            break;
+                        case 2:
+                            result[count]++;
+                            table[dec]++;
+                            break;
+                        case 1:
+                            table[dec]++;
+                            break;
+                        case 0:
+                            table[dec]++;
+                            break;
+                    }
+                }
+            }
+            //cout << "result[" << count << "] = " << result[count] << endl << endl;
+            count++;
+        }
+    }
 }
 
-void Gshare(int* result, unsigned long long addr, unsigned long long target, string behavior) {
+void Gshare(int* result, vector<Address> *input) {
 }
 
 
@@ -129,8 +187,8 @@ int main(int argc, char *argv[]) {
 
     //predictors//
     bimodal1(singlePtr, input);
-    bimodal2(doublePtr, addr, behavior);
-    Gshare(GsharePtr, addr, target, behavior);
+    bimodal2(doublePtr, input);
+    Gshare(GsharePtr, input);
 
     //output//
     outFile << alwaysT << "," << input->size() << "; \n";
