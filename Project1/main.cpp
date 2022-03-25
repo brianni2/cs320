@@ -7,6 +7,15 @@
 
 using namespace std;
 
+struct BTB_Result {
+    int correct;
+    int attempt;
+    BTB_Result(int x, int y) {
+        correct = x;
+        attempt = y;
+    };
+};
+
 string toBinary(unsigned long long decimal) {       //returns binary of decimal in reverse order
     string binaryResult = "";
     while(decimal != 0) {
@@ -406,9 +415,64 @@ int Tournament(vector<Address> *input) {
     return correct;
 }
 
-int BTB(vector<Address> *input) {
-    int correct = 0;
-    return correct;
+BTB_Result BTB(vector<Address> *input) {
+    //cout << "BTB\n";
+    BTB_Result result = BTB_Result(0, 0);
+
+    vector<int> table;
+    vector<string> buffer;
+    table.resize(512, 1);
+    buffer.resize(512);
+
+    for(int i = 0; i < input->size(); i++) {
+        //cout << i << endl;
+        string substr(input->at(i).binAddr, 0, 9);
+        string subtar(toBinary(input->at(i).target), 0, 9);
+        int dec = toInt(substr);
+        if(input->at(i).behavior == 0) {        //Not Taken
+            switch(table[dec]) {
+                case 0:
+                    break;
+                case 1:
+                    table[dec]--;
+                    break;
+                case 2:     //predict taken
+                    result.attempt++;
+                    if(buffer[dec] == subtar) {
+                        result.correct++;
+                    }
+                    table[dec]--;
+                    break;
+                case 3:     //predict taken
+                    result.attempt++;
+                    if(buffer[dec] == subtar) {
+                        result.correct++;
+                    }
+                    table[dec]--;
+                    break;
+            }
+            continue;
+        }
+        else {      //Taken
+            //cout << "Setting buffer\n";
+            buffer[dec] = subtar;
+            switch(table[dec]) {
+                case 3:
+                    break;
+                case 2:
+                    table[dec]++;
+                    break;
+                case 1:
+                    table[dec]++;
+                    break;
+                case 0:
+                    table[dec]++;
+                    break;
+            }
+        }
+    }
+
+    return result;
 }
 
 int main(int argc, char *argv[]) {
@@ -432,7 +496,6 @@ int main(int argc, char *argv[]) {
     int GshareRes[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
     int* GsharePtr = GshareRes;
     int tourPred;
-    int branchTarg;
 
     //main loop//
     while(getline(inFile, line)) {
@@ -451,7 +514,7 @@ int main(int argc, char *argv[]) {
     bimodal2(doublePtr, input);
     Gshare(GsharePtr, input);
     tourPred = Tournament(input);
-    branchTarg = BTB(input);
+    BTB_Result branchTarg = BTB(input);
 
     //output//
     outFile << alwaysT << "," << input->size() << "; \n";
@@ -472,7 +535,7 @@ int main(int argc, char *argv[]) {
     outFile << endl;
 
     outFile << tourPred << "," << input->size() << "; \n"; //Tournament
-    outFile << "x,y; " << "<- BTB correct predictions, BTB attempted predictions" << endl;
+    outFile << branchTarg.correct << "," << branchTarg.attempt << "; \n";   //BTB
     
     return 0;
 }
