@@ -436,24 +436,14 @@ BTB_Result BTB(vector<Address> *input) {
         }
         if(input->at(i).behavior == 0) {        //Not Taken
             switch(table[dec]) {
-                case 0:
+                case 0:     //predict not taken
                     break;
-                case 1:
-                    table[dec]--;
-                    break;
-                case 2:     //predict taken
+                case 1:     //predict taken
                     result.attempt++;
                     if(buffer[dec] == subtar) {
                         result.correct++;
                     }
-                    table[dec]--;
-                    break;
-                case 3:     //predict taken
-                    result.attempt++;
-                    if(buffer[dec] == subtar) {
-                        result.correct++;
-                    }
-                    table[dec]--;
+                    table[dec] = 0;
                     break;
             }
             continue;
@@ -461,18 +451,8 @@ BTB_Result BTB(vector<Address> *input) {
         else {      //Taken
             //cout << "Setting buffer\n";
             buffer[dec] = subtar;
-            switch(table[dec]) {
-                case 3:
-                    break;
-                case 2:
-                    table[dec]++;
-                    break;
-                case 1:
-                    table[dec]++;
-                    break;
-                case 0:
-                    table[dec]++;
-                    break;
+            if(table[dec] == 0) {
+                table[dec] = 1;
             }
         }
     }
