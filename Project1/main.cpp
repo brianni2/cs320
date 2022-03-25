@@ -30,6 +30,43 @@ int toInt(string bin) {
     return dec;
 }
 
+int Xor(string addr, vector<int> history) {
+    string result = "";
+    for(int i = 0; i < history.size(); i++) {
+        if(addr[i] == '0') {
+            switch(history[i]) {
+                case 0 :
+                    result += '0';
+                    break;
+                case 1 :
+                    result += '1';
+                    break;
+            }
+        }
+        if(addr[i] == '1') {
+            switch(history[i]) {
+                case 0 :
+                    result += '1';
+                    break;
+                case 1 :
+                    result += '0';
+                    break;
+            }
+        }
+    }
+    for(int i = history.size(); i < addr.length(); i++) {
+        switch(addr[i]) {
+            case '0':
+                result += '0';
+                break;
+            case '1':
+                result += '1';
+                break;
+        }
+    }
+    return toInt(result);
+}
+
 struct Address {
     unsigned long long addr;
     unsigned long long target;
@@ -149,8 +186,230 @@ void bimodal2(int* result, vector<Address> *input) {
 }
 
 void Gshare(int* result, vector<Address> *input) {
+    int count = 0;
+    for(int i = 3; i < 12; i++) {
+        vector<int> table;
+        table.resize(2048, 3);
+        vector<int> history;
+        history.resize(i, 0);
+        for(int j = 0; j < input->size(); j++) {
+            string substr(input->at(j).binAddr, 0, 11);
+            int index = Xor(substr, history);
+            //cout << index << "| \t" << table[index] << "|\t" << input->at(j).behavior << endl;
+            if(input->at(j).behavior == 0) {        //Not Taken
+                switch(table[index]) {
+                    case 0:
+                        result[count]++;
+                        break;
+                    case 1:
+                        result[count]++;
+                        table[index]--;
+                        break;
+                    case 2:
+                        table[index]--;
+                        break;
+                    case 3:
+                        table[index]--;
+                        break;
+                }
+                for(int k = history.size()-1; k < 0; k++) {
+                    history[k] = history[k-1];
+                }
+                history[0] = 0;
+                continue;
+            }
+            else {      //Taken
+                switch(table[index]) {
+                    case 3:
+                        result[count]++;
+                        break;
+                    case 2:
+                        result[count]++;
+                        table[index]++;
+                        break;
+                    case 1:
+                        table[index]++;
+                        break;
+                    case 0:
+                        table[index]++;
+                        break;
+                }
+                for(int k = history.size()-1; k < 0; k++) {
+                    history[k] = history[k-1];
+                }
+                history[0] = 1;
+            }
+        }
+        count++;
+    }
 }
 
+int Tournament(vector<Address> *input) {
+    vector<int> Gtable;
+    vector<int> Btable;
+    vector<int> history;
+    vector<int> pref;
+    Gtable.resize(2048, 3);
+    Btable.resize(2048, 3);
+    history.resize(11, 0);
+    pref.resize(2048, 0);
+
+    int correct = 0;
+
+    for(int i = 0; i < input->size(); i++) {
+        string substr(input->at(i).binAddr, 0, 11);
+        int dec = toInt(substr);
+        int index = Xor(substr, history);
+        int Bcorrect = 0;
+        int Gcorrect = 0;
+
+        if(input->at(i).behavior == 0) {        //Not Taken
+            switch(Btable[dec]) {               //Bimodal
+                case 0:
+                    Bcorrect = 1;
+                    break;
+                case 1:
+                    Bcorrect = 1;
+                    Btable[dec]--;
+                    break;
+                case 2:
+                    Bcorrect = 0;
+                    Btable[dec]--;
+                    break;
+                case 3:
+                    Bcorrect = 0;
+                    Btable[dec]--;
+                    break;
+            }
+            switch(Gtable[index]) {             //Gshare
+                case 0:
+                    Gcorrect = 1;
+                    break;
+                case 1:
+                    Gcorrect = 1;
+                    Gtable[index]--;
+                    break;
+                case 2:
+                    Gcorrect = 0;
+                    Gtable[index]--;
+                    break;
+                case 3:
+                    Gcorrect = 0;
+                    Gtable[index]--;
+                    break;
+            }
+            for(int k = history.size()-1; k < 0; k++) {
+                history[k] = history[k-1];
+            }
+            history[0] = 0;
+            continue;
+        }
+        else {                          //Taken
+            switch(Btable[dec]) {       //Bimodal
+                case 3:
+                    Bcorrect = 1;
+                    break;
+                case 2:
+                    Bcorrect = 1;
+                    Btable[dec]++;
+                    break;
+                case 1:
+                    Bcorrect = 0;
+                    Btable[dec]++;
+                    break;
+                case 0:
+                    Bcorrect = 0;
+                    Btable[dec]++;
+                    break;
+            }
+            switch(Gtable[index]) {     //Gshare
+                case 3:
+                    Gcorrect = 1;
+                    break;
+                case 2:
+                    Gcorrect = 1;
+                    Gtable[index]++;
+                    break;
+                case 1:
+                    Gcorrect = 0;
+                    Gtable[index]++;
+                    break;
+                case 0:
+                    Gcorrect = 0;
+                    Gtable[index]++;
+                    break;
+            }
+            for(int k = history.size()-1; k < 0; k++) {
+                history[k] = history[k-1];
+            }
+            history[0] = 1;
+        }
+        //check preference
+        switch(pref.at(dec)) {
+            case 3:     //strongly prefer Bimodal
+                if(Bcorrect && Gcorrect) {
+                    correct++;
+                    break;
+                }
+                if(Bcorrect) {
+                    correct++;
+                    break;
+                }
+                if(Gcorrect) {
+                    pref.at(dec)--;
+                    break;
+                }
+            case 2:     //prefer Bimodal
+                if(Bcorrect && Gcorrect) {
+                    correct++;
+                    break;
+                }
+                if(Bcorrect) {
+                    correct++;
+                    pref.at(dec)++;
+                    break;
+                }
+                if(Gcorrect) {
+                    pref.at(dec)--;
+                    break;
+                }
+            case 1:     //prefer Gshare
+                if(Bcorrect && Gcorrect) {
+                    correct++;
+                    break;
+                }
+                if(Bcorrect) {
+                    pref.at(dec)++;
+                    break;
+                }
+                if(Gcorrect) {
+                    correct++;
+                    pref.at(dec)--;
+                    break;
+                }
+            case 0:     //strongly prefer Gshare
+                if(Bcorrect && Gcorrect) {
+                    correct++;
+                    break;
+                }
+                if(Bcorrect) {
+                    pref.at(dec)++;
+                    break;
+                }
+                if(Gcorrect) {
+                    correct++;
+                    pref.at(dec);
+                    break;
+                }
+        }
+    }
+    return correct;
+}
+
+int BTB(vector<Address> *input) {
+    int correct = 0;
+    return correct;
+}
 
 int main(int argc, char *argv[]) {
     //Initialize variables and open files//
@@ -172,6 +431,8 @@ int main(int argc, char *argv[]) {
     int* doublePtr = doubleBit;
     int GshareRes[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
     int* GsharePtr = GshareRes;
+    int tourPred;
+    int branchTarg;
 
     //main loop//
     while(getline(inFile, line)) {
@@ -189,6 +450,8 @@ int main(int argc, char *argv[]) {
     bimodal1(singlePtr, input);
     bimodal2(doublePtr, input);
     Gshare(GsharePtr, input);
+    tourPred = Tournament(input);
+    branchTarg = BTB(input);
 
     //output//
     outFile << alwaysT << "," << input->size() << "; \n";
@@ -208,7 +471,7 @@ int main(int argc, char *argv[]) {
     }
     outFile << endl;
 
-    outFile << "x,y; " << "<- Tournament" << endl;
+    outFile << tourPred << "," << input->size() << "; \n"; //Tournament
     outFile << "x,y; " << "<- BTB correct predictions, BTB attempted predictions" << endl;
     
     return 0;
