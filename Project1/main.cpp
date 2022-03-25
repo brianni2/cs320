@@ -429,6 +429,11 @@ BTB_Result BTB(vector<Address> *input) {
         string substr(input->at(i).binAddr, 0, 9);
         string subtar(toBinary(input->at(i).target), 0, 9);
         int dec = toInt(substr);
+        if(subtar == buffer[dec]) {
+            result.attempt++;
+            result.correct++;
+            continue;
+        }
         if(input->at(i).behavior == 0) {        //Not Taken
             switch(table[dec]) {
                 case 0:
