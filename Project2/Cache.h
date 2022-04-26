@@ -14,22 +14,18 @@ struct Address {
 
 struct Package {
     int hit;
-    long content;
+    int age;
+    long tag;
     Package() {
         hit = 0;
-        content = -1;
+        age = 0;
+        tag = -1;
     }
-    int inRange(long addr) {
-        if(addr < content && addr > content-8) {
-            return 1;
-        }
-        return 0;
-    };
 };
 
 class Cache {
     public:
-        vector<Address> addresses;
+        vector<Address> trace;
         void pushBack(char, long);
 
         string DM(int);         //direct map
