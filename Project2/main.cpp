@@ -26,7 +26,7 @@ int main(int argc, char * argv[]) {
     string DMRes = "";
     string SARes = "";
     string FANRes = "";
-    string FAHRes = "";
+    string FAHCRes = "";
     string SANARes = "";
     string SANPRes = "";
     string PFRes = "";
@@ -54,10 +54,10 @@ int main(int argc, char * argv[]) {
                 break;
         }
     }
-    FANRes = cache.FA(0) + "\n";
-    FAHRes = cache.FA(1) + "\n";
+    FANRes = cache.FAN() + "\n";
+    FAHCRes = cache.FAHC() + "\n";
 
-    outFile << DMRes << SARes << FANRes << FAHRes << SANARes << SANPRes << PFRes;
+    outFile << DMRes << SARes << FANRes << FAHCRes << SANARes << SANPRes << PFRes;
 
     outFile.close();
     return 0;

@@ -1,3 +1,4 @@
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -13,12 +14,12 @@ struct Address {
 };
 
 struct Package {
-    int hit;
     int age;
+    int hot;
     long tag;
     Package() {
-        hit = 0;
         age = 0;
+        hot = 0;
         tag = -1;
     }
 };
@@ -30,7 +31,8 @@ class Cache {
 
         string DM(int);         //direct map
         string SA(int);         //set associative
-        string FA(int);         //fully associative
+        string FAN();           //fully associative normal
+        string FAHC();          //fully associative hot-cold
         string SANA(int);       //set associative no allocation
         string SANP(int);       //set associative prefetch
         string PF(int);         //prefetch

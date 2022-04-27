@@ -25,13 +25,11 @@ string Cache::DM(int cacheSize) {
     int access = trace.size();
 
     int lineSize = 32;
-    vector<Package> table;
-    table.resize(numBlock);
+    vector<Package> table(numBlock);
     for(int i = 0; i < trace.size(); i++) {
         int index = (trace[i].address / lineSize) % numBlock;
         long tag = trace[i].address >> tagOffset;
         if(table.at(index).tag == tag) {
-            //table[index].hit = 1;
             hits++;
             continue;
         }
@@ -43,9 +41,11 @@ string Cache::DM(int cacheSize) {
 };
 
 string Cache::SA(int assoc) {
+    //cout << assoc << "-way set associative\n";
     int lineSize = 32;
     int tagOffset = 14;     //tagOffset for 16KB
-    int sets = 16384 / (lineSize * assoc);
+    int ways = (lineSize * assoc);
+    int sets = 16384 / ways;
     int hits = 0;
     int access = trace.size();
 
@@ -76,15 +76,101 @@ string Cache::SA(int assoc) {
     return result;  //<- Set Associative 
 };
 
-string Cache::FA(int policy) {
-    int lineSize = 32;
+string Cache::FAN() {
     int tagOffset = 14;     //tagOffset for 16KB
+    int numBlock = 512;
     int hits = 0;
     int access = trace.size();
+    vector<Package> table(numBlock);
+    for(int i = 0; i < trace.size(); i++) {
+        long tag = trace[i].address >> tagOffset;
+        int LRU = 0;
+        int miss = 1;
+        for(int j = 0; j < numBlock; j++) {
+            if(table[j].tag == -1) {
+                table[j].tag = tag;
+                table[j].age = 0;
+                break;
+            }
+            if(table[j].tag == tag) {
+                table[j].age = 0;
+                hits++;
+                miss = 0;
+                break;
+            }
+            table[j].age++;
+            if(table[j].age > table[LRU].age) {
+                LRU = j;
+            }
+        }
+        if(miss) {
+            table[LRU].tag = tag;
+            table[LRU].age = 0;
+        }
+    }
 
     string result = to_string(hits) + "," + to_string(access) + ";";
     return result;  //<- Fully Associative (LRU) and (Hot-Cold LRU)
 };
+
+string Cache::FAHC() {
+    int tagOffset = 14;     //tagOffset for 16KB
+    int numBlock = 512;
+    int hits = 0;
+    int access = trace.size();
+    vector<Package> table(numBlock+1);
+    for(int i = 0; i < trace.size(); i++) {
+        //cout << i+1 << " / " << trace.size() << endl;
+        long tag = trace[i].address >> tagOffset;
+        int miss = 1;
+        for(int j = 1; j < table.size(); j++) {
+            if(table[j].tag == tag) {
+                table[j].hot = 1;
+                if(j%2 == 1) {
+                    table[j+1].hot = 0;
+                }
+                else {
+                    table[j-1].hot = 0;
+                }
+                hits++;
+                miss = 0;
+                break;
+            }
+        }
+        if(miss) {
+            //cout << "Finding coldest path...\n";
+            int j = 0;
+            while(j < table.size()) {
+                int left = (2*j)+1;
+                int right = (2*j)+2;
+                //cout << "left " << left << " right " << right << endl;
+                if(left > table.size() || right < table.size()) {
+                    break;
+                }
+                if(table[left].hot) {
+                    j = right;
+                    continue;
+                }
+                else if(table[right].hot){
+                    j = left;
+                    continue;
+                }
+            }
+            table[j].tag = tag;
+            table[j].hot = 1;
+            if(j%2 == 1) {
+                table[j+1].hot = 0;
+            }
+            else {
+                table[j-1].hot = 0;
+            }
+            //cout << "Coldest path found\n";
+        }
+    }
+
+    string result = to_string(hits) + "," + to_string(access) + ";";
+    return result;  //<- Set Associative with No allocation on a write miss
+}
 
 string Cache::SANA(int assoc) {
     int hits = 0;
