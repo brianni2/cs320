@@ -16,11 +16,9 @@ struct Address {
 
 struct Package {
     int age;
-    int hot;
     long tag;
     Package() {
         age = 0;
-        hot = 0;
         tag = -1;
     }
 };

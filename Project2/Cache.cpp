@@ -43,7 +43,6 @@ string Cache::DM(int cacheSize) {
 };
 
 string Cache::SA(int assoc) {
-    
     int byteOffset = log(16384/assoc);
     //int waySize = (LINESIZE * assoc);
     int sets = 16384 / (LINESIZE * assoc);
@@ -64,13 +63,13 @@ string Cache::SA(int assoc) {
                 miss = 0;
                 table[index][j].age = 0;
                 //cout << " \tindex[" << index << "][" << j << "] age " << table[index][j].age << endl;
-                break;
+                //break;
             }
-            if(table[index][j].tag == -1) {
+            if(table[index][j].tag == -1 && miss) {
                 table[index][j].tag = tag;
                 table[index][j].age = 0;
                 miss = 0;
-                break;
+                //break;
             }
         }
         if(miss) {
@@ -100,24 +99,22 @@ string Cache::FAN() {
     vector<Package> table(numBlock);
     for(int i = 0; i < trace.size(); i++) {
         long tag = trace[i].address >> byteOffset;
-        int LRU = 0;
         int miss = 1;
         for(int j = 0; j < numBlock; j++) {
             table[j].age++;
-            if(table[j].tag == -1) {
+            if(table[j].tag == tag) {
+                hits++;
+                miss = 0;
+                table[j].age = 0;
+            }
+            if(table[j].tag == -1 && miss) {
                 table[j].tag = tag;
                 table[j].age = 0;
                 miss = 0;
-                break;
-            }
-            if(table[j].tag == tag) {
-                table[j].age = 0;
-                hits++;
-                miss = 0;
-                break;
             }
         }
         if(miss) {
+            int LRU = 0;
             for(int j = 1; j < table.size(); j++) {
                 if(table[j].age > table[LRU].age) {       //find oldest entry
                     LRU = j;
@@ -137,52 +134,48 @@ string Cache::FAHC() {
     int numBlock = 512;
     int hits = 0;
     int access = trace.size();
-    vector<Package> table(numBlock+1);
+    vector<Package> table(numBlock);
+    vector<int> temperature(numBlock, 0);
     for(int i = 0; i < trace.size(); i++) {
-        //cout << i+1 << " / " << trace.size() << endl;
         long tag = trace[i].address >> byteOffset;
         int miss = 1;
-        for(int j = 1; j < table.size(); j++) {
+        int j = 0;
+        for(j; j < table.size(); j++) {
             if(table[j].tag == tag) {
-                table[j].hot = 1;
-                if(j%2 == 1) {
-                    table[j+1].hot = 0;
-                }
-                else {
-                    table[j-1].hot = 0;
-                }
                 hits++;
                 miss = 0;
+                int temp = numBlock + j;
+                while(temp) {
+                    if(temp % 2) {      //left child
+                        temp = (temp - 1) / 2;
+                        temperature[temp] = 1;  //parent hot
+                    }
+                    else {              //right child
+                        temp = (temp - 2) / 2;
+                        temperature[temp] = 0;  //parent cold
+                    }
+                }
                 break;
             }
         }
         if(miss) {
             //cout << "Finding coldest path...\n";
-            int j = 0;
-            while(j < table.size()) {
-                int left = (2*j)+1;
-                int right = (2*j)+2;
+            int k = 0;
+            for(int height = 0; height < int(log(numBlock)); height++) {
+                //int left = (2*j)+1;
+                //int right = (2*j)+2;
                 //cout << "left " << left << " right " << right << endl;
-                if(left > table.size() || right < table.size()) {
-                    break;
-                }
-                if(table[right].hot) {
-                    j = left;
+                if(temperature[k]) {    //hot
+                    temperature[k] = 0;
+                    k = (2*k)+2;        //right child
                     continue;
                 }
-                else if(table[left].hot){
-                    j = right;
-                    continue;
+                else {                  //cold
+                    temperature[k] = 1;
+                    k = (2*k)+1;        //left child
                 }
             }
-            table[j].tag = tag;
-            table[j].hot = 1;
-            if(j%2 == 1) {
-                table[j+1].hot = 0;
-            }
-            else {
-                table[j-1].hot = 0;
-            }
+            table[k].tag = tag;
             //cout << "Coldest path found\n";
         }
     }
@@ -202,33 +195,29 @@ string Cache::SANA(int assoc) {
     for(int i = 0; i < trace.size(); i++) {
         int index = (trace[i].address / LINESIZE) % sets;
         long tag = trace[i].address >> byteOffset;
-        int LRU = 0;
         int miss = 1;
         for(int j = 0; j < assoc; j++) {
             table[index][j].age++;
             if(table[index][j].tag == tag) {
-                table[index][j].age = 0;
                 hits++;
                 miss = 0;
-                break;
+                table[index][j].age = 0;
             }
-            if(table[index][j].tag == -1) {
+            if(table[index][j].tag == -1 && miss) {
                 table[index][j].tag = tag;
                 table[index][j].age = 0;
                 miss = 0;
-                break;
             }
         }
-        if(miss) {
-            if(trace[i].instruction != 'S') {
-                for(int j = 1; j < assoc; j++) {
-                    if(table[index][j].age > table[index][LRU].age) {       //find oldest entry
-                        LRU = j;
-                    }
+        if(miss && trace[i].instruction == 'L') {
+            int LRU = 0;
+            for(int j = 1; j < assoc; j++) {
+                if(table[index][j].age > table[index][LRU].age) {       //find oldest entry
+                    LRU = j;
                 }
-                table[index][LRU].tag = tag;
-                table[index][LRU].age = 0;
             }
+            table[index][LRU].tag = tag;
+            table[index][LRU].age = 0;
         }
     }
 
@@ -251,16 +240,14 @@ string Cache::SANP(int assoc) {
         for(int j = 0; j < assoc; j++) {
             table[index][j].age++;
             if(table[index][j].tag == tag) {
-                table[index][j].age = 0;
                 hits++;
                 miss = 0;
-                break;
+                table[index][j].age = 0;
             }
-            if(table[index][j].tag == -1) {
+            if(table[index][j].tag == -1 && miss) {
                 table[index][j].tag = tag;
                 table[index][j].age = 0;
                 miss = 0;
-                break;
             }
         }
         if(miss) {
@@ -277,10 +264,15 @@ string Cache::SANP(int assoc) {
         preTag = preTag >> byteOffset;
         miss = 1;
         for(int j = 0; j < assoc; j++) {
+            table[index][j].age++;
             if(table[index][j].tag == preTag) {
                 table[index][j].age = 0;
                 miss = 0;
-                break;
+            }
+            if(table[index][j].tag == -1 && miss) {
+                table[index][j].tag = tag;
+                table[index][j].age = 0;
+                miss = 0;
             }
         }
         if(miss) {
@@ -314,16 +306,14 @@ string Cache::PF(int assoc) {
         for(int j = 0; j < assoc; j++) {
             table[index][j].age++;
             if(table[index][j].tag == tag) {
-                table[index][j].age = 0;
                 hits++;
                 miss = 0;
-                break;
+                table[index][j].age = 0;
             }
-            if(table[index][j].tag == -1) {
+            if(table[index][j].tag == -1 && miss) {
                 table[index][j].tag = tag;
                 table[index][j].age = 0;
                 miss = 0;
-                break;
             }
         }
         if(miss) {
@@ -337,27 +327,31 @@ string Cache::PF(int assoc) {
             table[index][LRU].age = 0;
             //prefetch
             long preTag = trace[i].address + 32;
-        preTag = preTag >> byteOffset;
-        miss = 1;
-        for(int j = 0; j < assoc; j++) {
-            if(table[index][j].tag == preTag) {
-                table[index][j].age = 0;
-                miss = 0;
-                break;
-            }
-        }
-        if(miss) {
-            int LRU = 0;
-            for(int j = 1; j < assoc; j++) {
-                if(table[index][j].age > table[index][LRU].age) {       //find oldest entry
-                    LRU = j;
+            preTag = preTag >> byteOffset;
+            miss = 1;
+            for(int j = 0; j < assoc; j++) {
+                table[index][j].age++;
+                if(table[index][j].tag == preTag) {
+                    table[index][j].age = 0;
+                    miss = 0;
+                }
+                if(table[index][j].tag == -1 && miss) {
+                    table[index][j].tag = tag;
+                    table[index][j].age = 0;
+                    miss = 0;
                 }
             }
-            table[index][LRU].tag = preTag;
-            table[index][LRU].age = 0;
+            if(miss) {
+                int LRU = 0;
+                for(int j = 1; j < assoc; j++) {
+                    if(table[index][j].age > table[index][LRU].age) {       //find oldest entry
+                        LRU = j;
+                    }
+                }
+                table[index][LRU].tag = preTag;
+                table[index][LRU].age = 0;
+            }
         }
-        }
-        
     }
 
     string result = to_string(hits) + "," + to_string(access) + ";";
